@@ -1,0 +1,21 @@
+{
+    // https://nuxt.com/docs/guide/concepts/typescript
+    "extends": "./.nuxt/tsconfig.json",
+    "exclude": [
+        "./app",
+        "./bootstrap",
+        "./config",
+        "./database",
+        "./public",
+        "./resources",
+        "./routes",
+        "./storage",
+        "./tests",
+        "./vendor"
+    ],
+    "compilerOptions": {
+        "types": [
+            "vite/client"
+        ]
+    }
+}
