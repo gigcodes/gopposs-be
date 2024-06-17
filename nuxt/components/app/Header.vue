@@ -1,5 +1,5 @@
 <script lang="ts" setup>
-const auth = useAuthStore();
+const api = useApi()
 const { $storage } = useNuxtApp();
 
 const userItems = [
@@ -25,19 +25,13 @@ const userItems = [
   [
     {
       label: "Sign out",
-      click: auth.logout,
+      click: api.logout,
       icon: "i-heroicons-arrow-left-on-rectangle",
     },
   ],
 ];
 
 const navItems = [
-  {
-    label: "Nuxt.js Docs",
-    to: "https://nuxt.com/docs/getting-started/introduction",
-    target: "_blank",
-    icon: "i-heroicons-link-20-solid",
-  },
   {
     label: "Nuxt UI",
     to: "https://ui.nuxt.com/getting-started",
@@ -91,15 +85,15 @@ defineShortcuts({
         <AppTheme />
 
         <UDropdown
-          v-if="auth.logged"
+          v-if="api.loggedIn.value"
           :items="userItems"
           :ui="{ item: { disabled: 'cursor-text select-text' } }"
           :popper="{ placement: 'bottom-end' }"
         >
           <UAvatar
             size="sm"
-            :src="$storage(auth.user.avatar)"
-            :alt="auth.user.name"
+            :src="$storage(api.$user.avatar)"
+            :alt="api.$user.name"
             :ui="{ rounded: 'rounded-md' }"
           />
 
@@ -107,7 +101,7 @@ defineShortcuts({
             <div class="text-left">
               <p>Signed in as</p>
               <p class="truncate font-medium text-gray-900 dark:text-white">
-                {{ auth.user.email }}
+                {{ api.$user.email }}
               </p>
             </div>
           </template>

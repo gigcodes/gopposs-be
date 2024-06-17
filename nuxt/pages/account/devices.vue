@@ -1,6 +1,5 @@
 <script lang="ts" setup>
 const dayjs = useDayjs();
-const auth = useAuthStore();
 const loading = ref(false);
 const devices = ref([]);
 

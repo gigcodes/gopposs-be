@@ -6,23 +6,26 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Spatie\Csp\AddCspHeaders;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 use Illuminate\Validation\ValidationException;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
         api: __DIR__.'/../routes/api.php',
-        apiPrefix: '',
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
+        apiPrefix: '',
     )
     ->withMiddleware(function (Middleware $middleware) {
         $middleware
+            ->statefulApi()
             ->throttleApi(redis: true)
             ->trustProxies(at: [
                 '127.0.0.1',
             ])
             ->api(prepend: [
+                AddCspHeaders::class,
                 JsonResponse::class,
             ]);
     })

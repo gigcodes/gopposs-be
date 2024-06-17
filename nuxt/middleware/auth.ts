@@ -1,8 +1,9 @@
-export default defineNuxtRouteMiddleware((to, from) => {
-  const nuxtApp = useNuxtApp()
-  const auth = useAuthStore()
+export default defineNuxtRouteMiddleware(async (to, from) => {
+    const nuxtApp = useNuxtApp()
+    const api = useApi()
+    await api.checkUser()
 
-  if (!auth.logged) {
-    return nuxtApp.runWithContext(() => navigateTo('/'))
-  }
+    if (!api.loggedIn.value) {
+        return nuxtApp.runWithContext(() => navigateTo('/'))
+    }
 })

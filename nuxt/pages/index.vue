@@ -3,7 +3,8 @@ import { ModalDemo } from '#components'
 
 const modal = useModal();
 const router = useRouter();
-const auth = useAuthStore();
+
+const api = useApi()
 
 function openDemoModal() {
   modal.open(ModalDemo)
@@ -27,7 +28,7 @@ function openDemoModal() {
         <div class="font-bold text-lg leading-tight tracking-tighter mb-4">
           User Object
         </div>
-        <pre>{{ auth.user }}</pre>
+        <pre>{{ api.$user }}</pre>
       </UCard>
     </div>
   </div>

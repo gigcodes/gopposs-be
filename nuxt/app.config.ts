@@ -1,5 +1,5 @@
 export default defineAppConfig({
-  name: 'Laravel/Nuxt Boilerplate',
+  name: 'Gopposs',
   ui: {
     primary: 'emerald',
     strategy: 'override',

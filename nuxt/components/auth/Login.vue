@@ -1,7 +1,6 @@
 <script lang="ts" setup>
 const config = useRuntimeConfig();
-const router = useRouter();
-const auth = useAuthStore();
+const api = useApi();
 const form = ref();
 
 type Provider = {
@@ -17,42 +16,27 @@ const state = reactive({
   remember: false,
 });
 
-const { refresh: onSubmit, status: loginStatus } = useFetch<any>("login", {
-  method: "POST",
-  body: state,
-  immediate: false,
-  watch: false,
-  async onResponse({ response }) {
-    if (response?.status === 422) {
-      form.value.setErrors(response._data?.errors);
-    } else if (response._data?.ok) {
-      auth.token = response._data.token;
+const onSubmit = () => api.attempt(state)
 
-      await auth.fetchUser();
-      await router.push("/");
-    }
-  }
-});
+// const { refresh: onSubmit, status: loginStatus } = useFetch<any>("login", {
+//   method: "POST",
+//   body: state,
+//   immediate: false,
+//   watch: false,
+//     credentials: 'include',
+//     async onResponse({ response }) {
+//     if (response?.status === 422) {
+//       form.value.setErrors(response._data?.errors);
+//     } else if (response._data?.ok) {
+//       auth.token = response._data.token;
+//
+//       await auth.fetchUser();
+//       await router.push("/");
+//     }
+//   }
+// });
 
 const providers = ref<{ [key: string]: Provider }>(config.public.providers);
-
-async function handleMessage(event: { data: any }): Promise<void> {
-  const provider = event.data.provider as string;
-
-  if (Object.keys(providers.value).includes(provider) && event.data.token) {
-    providers.value[provider].loading = false;
-    auth.token = event.data.token;
-
-    await auth.fetchUser();
-    await router.push("/");
-  } else if (event.data.message) {
-    useToast().add({
-      icon: "i-heroicons-exclamation-circle-solid",
-      color: "red",
-      title: event.data.message,
-    });
-  }
-}
 
 function loginVia(provider: string): void {
   providers.value[provider].loading = true;
@@ -76,8 +60,6 @@ function loginVia(provider: string): void {
   }, 500);
 }
 
-onMounted(() => window.addEventListener("message", handleMessage));
-onBeforeUnmount(() => window.removeEventListener("message", handleMessage));
 </script>
 
 <template>
@@ -96,7 +78,7 @@ onBeforeUnmount(() => window.removeEventListener("message", handleMessage));
       />
     </div>
 
-    <UDivider label="OR" />
+    <UDivider v-if="providers && providers.length" label="OR" />
 
     <UForm ref="form" :state="state" @submit="onSubmit" class="space-y-4">
       <UFormGroup label="Email" name="email" required>

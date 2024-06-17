@@ -6,6 +6,7 @@ use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use App\Models\UserProvider;
 use Browser;
+use DeviceDetector\Parser\Client\Browser;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;

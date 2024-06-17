@@ -21,7 +21,7 @@ export default defineNuxtConfig({
 
     app: {
         head: {
-            title: 'Laravel/Nuxt Boilerplate',
+            title: 'Gopposs App',
             meta: [
                 { charset: 'utf-8' },
                 { name: 'viewport', content: 'width=device-width, initial-scale=1' },
@@ -64,16 +64,6 @@ export default defineNuxtConfig({
         }
     },
 
-    security: {
-        headers: {
-            crossOriginEmbedderPolicy: 'unsafe-none',
-            crossOriginOpenerPolicy: 'same-origin-allow-popups',
-            contentSecurityPolicy: {
-                "img-src": ["'self'", "data:", "https://*", import.meta.env.API_URL || 'http://127.0.0.1:8000'],
-            },
-        },
-    },
-
     dayjs: {
         locales: ['en'],
         plugins: ['relativeTime', 'utc', 'timezone'],
@@ -89,17 +79,13 @@ export default defineNuxtConfig({
      * @see https://v3.nuxtjs.org/guide/features/runtime-config#exposing-runtime-config
      */
     runtimeConfig: {
-        apiLocal: import.meta.env.API_LOCAL_URL,
         public: {
-            apiBase: import.meta.env.API_URL,
+            webURL: import.meta.env.WEB_URL,
+            apiURL: import.meta.env.API_URL,
             apiPrefix: '/api/v1',
             storageBase: import.meta.env.API_URL + '/storage/',
             providers: {
-                google: {
-                    name: "Google",
-                    icon: "",
-                    color: "gray",
-                },
+
             },
         },
     },
