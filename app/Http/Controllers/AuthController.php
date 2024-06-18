@@ -4,14 +4,11 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
-use App\Models\UserProvider;
-use Browser;
 use DeviceDetector\Parser\Client\Browser;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\JsonResponse;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
 use Illuminate\Support\Facades\Hash;
@@ -19,8 +16,6 @@ use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
-use Illuminate\View\View;
-use Laravel\Socialite\Facades\Socialite;
 
 class AuthController extends Controller
 {
@@ -51,90 +46,6 @@ class AuthController extends Controller
         return response()->json([
             'ok' => true,
         ], 201);
-    }
-
-    /**
-     * Redirect to provider for authentication
-     */
-    public function redirect(Request $request, string $provider): RedirectResponse
-    {
-        return Socialite::driver($provider)->stateless()->redirect();
-    }
-
-    /**
-     * Handle callback from provider
-     * @throws \Exception
-     */
-    public function callback(Request $request, string $provider): View
-    {
-        $oAuthUser = Socialite::driver($provider)->stateless()->user();
-
-        if (!$oAuthUser?->token) {
-            return view('oauth', [
-                'message' => [
-                    'ok' => false,
-                    'message' => __('Unable to authenticate with :provider', ['provider' => $provider]),
-                ],
-            ]);
-        }
-
-        $userProvider = UserProvider::select('id', 'user_id')
-            ->where('name', $provider)
-            ->where('provider_id', $oAuthUser->id)
-            ->first();
-
-        if (!$userProvider) {
-            if (User::where('email', $oAuthUser->email)->exists()) {
-                return view('oauth', [
-                    'message' => [
-                        'ok' => false,
-                        'message' => __('Unable to authenticate with :provider. User with email :email already exists. To connect a new service to your account, you can go to your account settings and go through the process of linking your account.', [
-                            'provider' => $provider,
-                            'email' => $oAuthUser->email,
-                        ]),
-                    ],
-                ]);
-            }
-
-            $user = new User();
-            $user->ulid = Str::ulid()->toBase32();
-            $user->avatar = $oAuthUser->picture ?? $oAuthUser->avatar_original ?? $oAuthUser->avatar;
-            $user->name = $oAuthUser->name;
-            $user->email = $oAuthUser->email;
-            $user->password = Hash::make(Str::random(32));
-            $user->has_password = false;
-            $user->email_verified_at = now();
-            $user->save();
-
-            $user->assignRole('user');
-
-            $user->userProviders()->create([
-                'provider_id' => $oAuthUser->id,
-                'name' => $provider,
-            ]);
-        } else {
-            $user = $userProvider->user;
-        }
-
-        $browser = Browser::parse($request->userAgent());
-        $device = $browser->platformName() . ' / ' . $browser->browserName();
-
-        $sanctumToken = $user->createToken(
-            $device,
-            ['*'],
-            now()->addMonth()
-        );
-
-        $sanctumToken->accessToken->ip = $request->ip();
-        $sanctumToken->accessToken->save();
-
-        return view('oauth', [
-            'message' => [
-                'ok' => true,
-                'provider' => $provider,
-                'token' => $sanctumToken->plainTextToken,
-            ],
-        ]);
     }
 
     /**
