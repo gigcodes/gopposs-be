@@ -16,8 +16,6 @@ use Illuminate\Validation\ValidationException;
 
 class AccountController extends Controller
 {
-    use ApiResponseHelpers;
-
     /**
      * Update the user's profile information.
      */

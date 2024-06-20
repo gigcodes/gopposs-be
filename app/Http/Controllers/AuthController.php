@@ -3,13 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Actions\ValidateOtpAction;
-use App\ApiResponseHelpers;
 use App\Events\OtpVerificationCodeResentEvent;
 use App\Events\OtpVerificationFailedEvent;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
 use App\Services\OtpService;
-use DeviceDetector\Parser\Client\Browser;
+use hisorange\BrowserDetect\Parser as Browser;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Events\Verified;
@@ -24,11 +23,6 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
-    use ApiResponseHelpers;
-
-    /**
-     * Register new user
-     */
     public function register(Request $request): JsonResponse
     {
         $request->validate([
@@ -60,8 +54,7 @@ class AuthController extends Controller
                 now()->addDay()
         );
 
-        return response()->json([
-            'ok' => true,
+        return $this->respondWithSuccess([
             'token' => $sanctumToken->plainTextToken,
         ]);
     }
@@ -90,8 +83,7 @@ class AuthController extends Controller
         $sanctumToken->accessToken->ip = $request->ip();
         $sanctumToken->accessToken->save();
 
-        return response()->json([
-            'ok' => true,
+        return $this->respondWithSuccess([
             'token' => $sanctumToken->plainTextToken,
         ]);
     }
@@ -103,9 +95,7 @@ class AuthController extends Controller
     {
         $request->user()->currentAccessToken()->delete();
 
-        return response()->json([
-            'ok' => true,
-        ]);
+        return $this->respondNoContent();
     }
 
     /**
@@ -115,8 +105,7 @@ class AuthController extends Controller
     {
         $user = $request->user();
 
-        return response()->json([
-            'ok' => true,
+        return $this->respondWithSuccess([
             'user' => [
                 ...$user->toArray(),
                 'must_verify_email' => $user->mustVerifyEmail(),
@@ -149,10 +138,7 @@ class AuthController extends Controller
             ]);
         }
 
-        return response()->json([
-            'ok' => true,
-            'message' => __($status),
-        ]);
+        return $this->respondOk(__($status));
     }
 
     /**
@@ -189,10 +175,7 @@ class AuthController extends Controller
             ]);
         }
 
-        return response()->json([
-            'ok' => true,
-            'message' => __($status),
-        ]);
+        return $this->respondOk(__($status));
     }
 
     /**
@@ -211,9 +194,7 @@ class AuthController extends Controller
             event(new Verified($user));
         }
 
-        return response()->json([
-            'ok' => true,
-        ]);
+        return $this->respondNoContent();
     }
 
     /**
@@ -231,10 +212,7 @@ class AuthController extends Controller
 
         $user->sendEmailVerificationNotification();
 
-        return response()->json([
-            'ok' => true,
-            'message' => __('Verification link sent!'),
-        ]);
+        return $this->respondOk(__('Verification link sent!'));
     }
 
     /**
@@ -261,10 +239,7 @@ class AuthController extends Controller
             unset($device->id);
         }
 
-        return response()->json([
-            'ok' => true,
-            'devices' => $devices,
-        ]);
+        return $this->respondWithSuccess(['devices' => $devices]);
     }
 
     /**
@@ -284,9 +259,7 @@ class AuthController extends Controller
             $user->tokens()->where('id', $id)->delete();
         }
 
-        return response()->json([
-            'ok' => true,
-        ]);
+        return $this->respondNoContent();
     }
 
     public function verifyOtp(Request $request, ValidateOtpAction $action)
