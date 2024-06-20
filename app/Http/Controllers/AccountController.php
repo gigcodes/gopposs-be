@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\ApiResponseHelpers;
 use App\Models\TemporaryUpload;
 use App\Rules\TemporaryFileExists;
+use App\Services\OtpService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -14,13 +16,14 @@ use Illuminate\Validation\ValidationException;
 
 class AccountController extends Controller
 {
+    use ApiResponseHelpers;
+
     /**
      * Update the user's profile information.
      */
     public function update(Request $request): JsonResponse
     {
         $request->merge([
-            // Remove extra spaces and non-word characters
             'name' => $request->name ? Str::squish(Str::onlyWords($request->name)) : '',
         ]);
 
@@ -66,7 +69,6 @@ class AccountController extends Controller
         ]);
 
         $user = $request->user();
-        abort_unless($user->has_password, 403, __('Access denied.'));
 
         if (!Hash::check($request->current_password, $user->password)) {
             throw ValidationException::withMessages([
@@ -81,5 +83,24 @@ class AccountController extends Controller
         return response()->json([
             'ok' => true,
         ]);
+    }
+
+    public function updatePhone(Request $request)
+    {
+        $request->validate([
+            'phone_number' => ['required'],
+        ]);
+
+        $user = $request->user();
+
+        $user->update([
+            'phone_number' => $request->get('phone_number'),
+        ]);
+
+        $service = app(OtpService::class);
+
+        $service->generateOtpAndSend($user);
+
+        return $this->respondOk('Phone number updated successfully.');
     }
 }

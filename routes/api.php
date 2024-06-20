@@ -18,12 +18,16 @@ Route::prefix('api/v1')->group(function () {
     Route::get('verify-email/{ulid}/{hash}', [AuthController::class, 'verifyEmail'])->middleware(['signed', 'throttle:6,1'])->name('verification.verify');
 
     Route::middleware(['auth:sanctum'])->group(function () {
+        Route::post('account/phone/update', [AccountController::class, 'updatePhone'])->name('account.updatePhone');
+
+        Route::post('login/verify-otp', [AuthController::class, 'verifyOtp'])->name('2fa.verifyOtp');
+        Route::post('login/verify-otp/resend', [AuthController::class, 'resend'])->name('2fa.resend');
+
         Route::post('logout', [AuthController::class, 'logout'])->name('logout');
         Route::post('devices/disconnect', [AuthController::class, 'deviceDisconnect'])->name('devices.disconnect');
         Route::get('devices', [AuthController::class, 'devices'])->name('devices');
         Route::get('user', [AuthController::class, 'user'])->name('user');
 
-        Route::post('account/update', [AccountController::class, 'update'])->name('account.update');
         Route::post('account/password', [AccountController::class, 'password'])->name('account.password');
 
         Route::middleware(['throttle:uploads'])->group(function () {

@@ -13,6 +13,12 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->string('avatar')->nullable()->after('email_verified_at');
+            $table->string('phone_no')->nullable();
+            $table->boolean('onboarded')->default(false);
+            $table->integer('dob_year')->nullable();
+            $table->integer('dob_month')->nullable();
+            $table->integer('dob_date')->nullable();
+            $table->string('gender')->nullable();
         });
     }
 
@@ -23,6 +29,12 @@ return new class extends Migration
     {
         Schema::table('users', function (Blueprint $table) {
             $table->dropColumn('avatar');
+            $table->dropColumn('phone_no');
+            $table->dropColumn('onboarded');
+            $table->dropColumn('dob_year');
+            $table->dropColumn('dob_date');
+            $table->dropColumn('dob_month');
+            $table->dropColumn('gender');
         });
     }
 };

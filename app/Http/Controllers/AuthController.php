@@ -2,8 +2,13 @@
 
 namespace App\Http\Controllers;
 
+use App\Actions\ValidateOtpAction;
+use App\ApiResponseHelpers;
+use App\Events\OtpVerificationCodeResentEvent;
+use App\Events\OtpVerificationFailedEvent;
 use App\Http\Requests\Auth\LoginRequest;
 use App\Models\User;
+use App\Services\OtpService;
 use DeviceDetector\Parser\Client\Browser;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
@@ -19,6 +24,8 @@ use Illuminate\Validation\ValidationException;
 
 class AuthController extends Controller
 {
+    use ApiResponseHelpers;
+
     /**
      * Register new user
      */
@@ -36,16 +43,27 @@ class AuthController extends Controller
             'password' => Hash::make($request->password),
         ]);
 
-        $user->ulid = Str::ulid()->toBase32();
         $user->save();
 
         $user->assignRole('user');
 
         event(new Registered($user));
 
+        $browser = Browser::parse($request->userAgent());
+        $device = $browser->platformName() . ' / ' . $browser->browserName();
+
+        $sanctumToken = $user->createToken(
+            $device,
+            ['*'],
+            $request->remember ?
+                now()->addMonth() :
+                now()->addDay()
+        );
+
         return response()->json([
             'ok' => true,
-        ], 201);
+            'token' => $sanctumToken->plainTextToken,
+        ]);
     }
 
     /**
@@ -145,7 +163,7 @@ class AuthController extends Controller
     {
         $request->validate([
             'token' => ['required'],
-            'email' => ['required', 'email', 'exists:'.User::class],
+            'email' => ['required', 'email', 'exists:' . User::class],
             'password' => ['required', 'confirmed', Rules\Password::defaults()],
         ]);
 
@@ -207,7 +225,7 @@ class AuthController extends Controller
             'email' => ['required', 'email'],
         ]);
 
-        $user = $request->user()?: User::where('email', $request->email)->whereNull('email_verified_at')->first();
+        $user = $request->user() ?: User::where('email', $request->email)->whereNull('email_verified_at')->first();
 
         abort_if(!$user, 400);
 
@@ -260,7 +278,7 @@ class AuthController extends Controller
 
         $user = $request->user();
 
-        $id = (int) Crypt::decryptString($request->hash);
+        $id = (int)Crypt::decryptString($request->hash);
 
         if (!empty($id)) {
             $user->tokens()->where('id', $id)->delete();
@@ -269,5 +287,29 @@ class AuthController extends Controller
         return response()->json([
             'ok' => true,
         ]);
+    }
+
+    public function verifyOtp(Request $request, ValidateOtpAction $action)
+    {
+        if ($action->handle($request)) {
+            event(new OtpVerificationFailedEvent($request->user()));
+            return $this->respondForbidden(__('Invalid verification otp'));
+        } else {
+            return $this->respondOk('Valid Otp');
+        }
+    }
+
+    public function resend()
+    {
+        /** @var User $user */
+        $user = auth()->user();
+
+        $service = app(OtpService::class);
+
+        $service->generateOtpAndSend($user);
+
+        event(new OtpVerificationCodeResentEvent($user));
+
+        $this->respondOk('The OTP has been resent.');
     }
 }
