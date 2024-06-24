@@ -5,35 +5,6 @@ ARG FRANKENPHP_VERSION=latest
 
 ARG COMPOSER_VERSION=latest
 
-###########################################
-# Build frontend assets with NPM
-###########################################
-
-ARG NODE_VERSION=20-alpine
-
-FROM node:${NODE_VERSION} AS build
-
-ENV ROOT=/var/www/html
-
-WORKDIR ${ROOT}
-
-RUN npm config set update-notifier false && npm set progress=false
-
-COPY --link package*.json ./
-
-RUN if [ -f $ROOT/package-lock.json ]; \
-    then \
-    npm ci --loglevel=error --no-audit; \
-    else \
-    npm install --loglevel=error --no-audit; \
-    fi
-
-COPY --link . .
-
-RUN npm run build
-
-###########################################
-
 FROM composer:${COMPOSER_VERSION} AS vendor
 
 FROM dunglas/frankenphp:${FRANKENPHP_VERSION}-php${PHP_VERSION}-alpine
@@ -133,7 +104,6 @@ RUN composer install \
     --audit
 
 COPY --link --chown=${USER}:${USER} . .
-COPY --link --chown=${USER}:${USER} --from=build ${ROOT}/public public
 
 RUN mkdir -p \
     storage/framework/sessions \
@@ -144,7 +114,6 @@ RUN mkdir -p \
     bootstrap/cache && chmod -R a+rw storage
 
 COPY --link --chown=${USER}:${USER} deployment/supervisord.conf /etc/supervisor/
-COPY --link --chown=${USER}:${USER} deployment/octane/supervisord.frankenphp.conf /etc/supervisor/conf.d/
 COPY --link --chown=${USER}:${USER} deployment/supervisord.*.conf /etc/supervisor/conf.d/
 COPY --link --chown=${USER}:${USER} deployment/start-container /usr/local/bin/start-container
 COPY --link --chown=${USER}:${USER} deployment/php.ini ${PHP_INI_DIR}/conf.d/99-octane.ini
