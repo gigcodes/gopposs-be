@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\ApiResponseHelpers;
 use App\Models\TemporaryUpload;
 use App\Rules\TemporaryFileExists;
-use App\Services\OtpService;
+use App\Services\Tokens\TokenBrokerInterface;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
@@ -16,6 +15,11 @@ use Illuminate\Validation\ValidationException;
 
 class AccountController extends Controller
 {
+
+    public function __construct(private readonly TokenBrokerInterface $tokenBroker)
+    {
+    }
+
     /**
      * Update the user's profile information.
      */
@@ -44,7 +48,8 @@ class AccountController extends Controller
         if ($email !== $request->email) {
             $user->email_verified_at = null;
             $user->save(['timestamps' => false]);
-            $user->sendEmailVerificationNotification();
+
+            $this->tokenBroker->sendToken($request->user());
         }
 
         // Delete temporary upload record
@@ -81,24 +86,5 @@ class AccountController extends Controller
         return response()->json([
             'ok' => true,
         ]);
-    }
-
-    public function updatePhone(Request $request)
-    {
-        $request->validate([
-            'phone_number' => ['required'],
-        ]);
-
-        $user = $request->user();
-
-        $user->update([
-            'phone_number' => $request->get('phone_number'),
-        ]);
-
-        $service = app(OtpService::class);
-
-        $service->generateOtpAndSend($user);
-
-        return $this->respondOk('Phone number updated successfully.');
     }
 }

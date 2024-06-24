@@ -3,11 +3,18 @@
 namespace App\Providers;
 
 use App\Helpers\Image;
+use App\Listeners\SendMobileVerificationNotification;
+use App\Services\Tokens\TokenBroker;
+use App\Services\Tokens\TokenBrokerInterface;
+use App\Services\Tokens\TokenRepositoryInterface;
+use App\Services\Tokens\TokenRepositoryManager;
+use Illuminate\Auth\Events\Registered;
 use Illuminate\Auth\Notifications\ResetPassword;
 use Illuminate\Auth\Notifications\VerifyEmail;
 use Illuminate\Cache\RateLimiting\Limit;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Event;
 use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Str;
@@ -24,6 +31,15 @@ class AppServiceProvider extends ServiceProvider
             $this->app->register(\Laravel\Telescope\TelescopeServiceProvider::class);
             $this->app->register(TelescopeServiceProvider::class);
         }
+
+        $this->app->singleton('verifier.token.repository', fn ($app) => new TokenRepositoryManager($app));
+
+        $this->app->singleton(TokenRepositoryInterface::class,
+            fn ($app) => $app['verifier.token.repository']->driver()
+        );
+
+        $this->app->bind(TokenBrokerInterface::class, TokenBroker::class);
+
     }
 
     /**
@@ -33,10 +49,6 @@ class AppServiceProvider extends ServiceProvider
     {
         RateLimiter::for('api', static function (Request $request) {
             return Limit::perMinute(60)->by($request->user()?->id ?: $request->ip());
-        });
-
-        RateLimiter::for('verification-notification', static function (Request $request) {
-            return Limit::perMinute(1)->by($request->user()?->email ?: $request->ip());
         });
 
         RateLimiter::for('uploads', static function (Request $request) {
@@ -49,18 +61,10 @@ class AppServiceProvider extends ServiceProvider
             return config('app.frontend_url') . "/auth/reset/{$token}?email={$notifiable->getEmailForPasswordReset()}";
         });
 
-        VerifyEmail::createUrlUsing(static function (object $notifiable) {
-            $url = url()->temporarySignedRoute(
-                'verification.verify',
-                now()->addMinutes(config('auth.verification.expire', 60)),
-                [
-                    'ulid' => $notifiable->ulid,
-                    'hash' => sha1($notifiable->getEmailForVerification()),
-                ]
-            );
-
-            return config('app.frontend_url') . '/auth/verify?verify_url=' . urlencode($url);
-        });
+        Event::listen(
+            Registered::class,
+            SendMobileVerificationNotification::class,
+        );
 
         /**
          * Convert uploaded image to webp, jpeg or png format and resize it
