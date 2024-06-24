@@ -34,3 +34,8 @@ frankenphp
 .config
 .data
 .env
+.github
+.git
+.nuxt
+pint.json
+
