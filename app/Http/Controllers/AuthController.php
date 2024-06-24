@@ -2,61 +2,54 @@
 
 namespace App\Http\Controllers;
 
-use App\Actions\ValidateOtpAction;
-use App\Events\OtpVerificationCodeResentEvent;
-use App\Events\OtpVerificationFailedEvent;
 use App\Http\Requests\Auth\LoginRequest;
+use App\Http\Requests\RegisterRequest;
 use App\Models\User;
-use App\Services\OtpService;
-use hisorange\BrowserDetect\Parser as Browser;
 use Illuminate\Auth\Events\PasswordReset;
 use Illuminate\Auth\Events\Registered;
-use Illuminate\Auth\Events\Verified;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Crypt;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 use Illuminate\Support\Str;
-use Illuminate\Validation\Rules;
 use Illuminate\Validation\ValidationException;
+use Browser;
 
 class AuthController extends Controller
 {
-    public function register(Request $request): JsonResponse
+    public function register(RegisterRequest $request): JsonResponse
     {
-        $request->validate([
-            'name' => ['required', 'string', 'max:255'],
-            'email' => ['required', 'string', 'lowercase', 'email', 'max:255', 'unique:' . User::class],
-            'password' => ['required', 'confirmed', Rules\Password::defaults()],
-        ]);
+        try {
+            DB::beginTransaction();
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-        ]);
+            $user = User::create([
+                'name' => $request->name,
+                'email' => $request->email,
+                'password' => Hash::make($request->password),
+            ]);
 
-        $user->save();
+            $user->save();
 
-        $user->assignRole('user');
+            $user->assignRole('user');
 
-        event(new Registered($user));
+            event(new Registered($user));
 
-        $browser = Browser::parse($request->userAgent());
-        $device = $browser->platformName() . ' / ' . $browser->browserName();
+            $device = Browser::platformName() . ' / ' . Browser::browserName();
 
-        $sanctumToken = $user->createToken(
-            $device,
-            ['*'],
-            $request->remember ?
-                now()->addMonth() :
-                now()->addDay()
-        );
+            $sanctumToken = $user->createToken($device);
 
-        return $this->respondWithSuccess([
-            'token' => $sanctumToken->plainTextToken,
-        ]);
+            DB::commit();
+
+            return $this->respondWithSuccess([
+                'token' => $sanctumToken->plainTextToken,
+            ]);
+        } catch (\Exception $exception) {
+            DB::rollBack();
+            return $this->respondError($exception->getMessage());
+        }
+
     }
 
     /**
@@ -179,43 +172,6 @@ class AuthController extends Controller
     }
 
     /**
-     * Mark the authenticated user's email address as verified.
-     */
-    public function verifyEmail(Request $request, string $ulid, string $hash): JsonResponse
-    {
-        $user = User::where('ulid', $ulid)->first();
-
-        abort_if(!$user, 404);
-        abort_if(!hash_equals(sha1($user->getEmailForVerification()), $hash), 403, __('Invalid verification link'));
-
-        if (!$user->hasVerifiedEmail()) {
-            $user->markEmailAsVerified();
-
-            event(new Verified($user));
-        }
-
-        return $this->respondNoContent();
-    }
-
-    /**
-     * Send a new email verification notification.
-     */
-    public function verificationNotification(Request $request): JsonResponse
-    {
-        $request->validate([
-            'email' => ['required', 'email'],
-        ]);
-
-        $user = $request->user() ?: User::where('email', $request->email)->whereNull('email_verified_at')->first();
-
-        abort_if(!$user, 400);
-
-        $user->sendEmailVerificationNotification();
-
-        return $this->respondOk(__('Verification link sent!'));
-    }
-
-    /**
      * Get authenticated user devices
      */
     public function devices(Request $request): JsonResponse
@@ -260,29 +216,5 @@ class AuthController extends Controller
         }
 
         return $this->respondNoContent();
-    }
-
-    public function verifyOtp(Request $request, ValidateOtpAction $action)
-    {
-        if ($action->handle($request)) {
-            event(new OtpVerificationFailedEvent($request->user()));
-            return $this->respondForbidden(__('Invalid verification otp'));
-        } else {
-            return $this->respondOk('Valid Otp');
-        }
-    }
-
-    public function resend()
-    {
-        /** @var User $user */
-        $user = auth()->user();
-
-        $service = app(OtpService::class);
-
-        $service->generateOtpAndSend($user);
-
-        event(new OtpVerificationCodeResentEvent($user));
-
-        $this->respondOk('The OTP has been resent.');
     }
 }

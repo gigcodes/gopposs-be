@@ -2,13 +2,15 @@
 
 namespace App\Models;
 
+use App\Notifications\VerifyEmailNotification;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
+use App\Contracts\MustVerifyEmail as IMustVerifyEmail;
 
-class User extends Authenticatable
+class User extends Authenticatable implements IMustVerifyEmail
 {
     use HasApiTokens, HasFactory, HasRoles, Notifiable;
 
@@ -53,5 +55,48 @@ class User extends Authenticatable
             'password' => 'hashed',
             'has_password' => 'boolean',
         ];
+    }
+
+    /**
+     * Determine if the user has verified their email address.
+     *
+     * @return bool
+     */
+    public function hasVerifiedEmail(): bool
+    {
+        return ! is_null($this->email_verified_at);
+    }
+
+    /**
+     * Mark the given user's email as verified.
+     *
+     * @return bool
+     */
+    public function markEmailAsVerified(): bool
+    {
+        return $this->forceFill([
+            'email_verified_at' => $this->freshTimestamp(),
+        ])->save();
+    }
+
+    /**
+     * Send the email verification notification.
+     *
+     * @param string $token
+     * @return void
+     */
+    public function customSendEmailVerificationNotification(string $token): void
+    {
+        $this->notify(new VerifyEmailNotification($token));
+    }
+
+    /**
+     * Get the email address that should be used for verification.
+     *
+     * @return string
+     */
+    public function getEmailForVerification(): string
+    {
+        return $this->email;
     }
 }

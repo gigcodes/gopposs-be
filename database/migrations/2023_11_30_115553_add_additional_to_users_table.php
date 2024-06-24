@@ -12,13 +12,15 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('users', function (Blueprint $table) {
-            $table->string('avatar')->nullable()->after('email_verified_at');
-            $table->string('phone_no')->nullable();
-            $table->boolean('onboarded')->default(false);
-            $table->integer('dob_year')->nullable();
-            $table->integer('dob_month')->nullable();
-            $table->integer('dob_date')->nullable();
-            $table->string('gender')->nullable();
+            $table->after('email_verified_at', function ($table) {
+                $table->string('avatar')->nullable();
+                $table->string('phone_no')->nullable();
+                $table->boolean('onboarded')->default(false);
+                $table->integer('dob_year')->nullable();
+                $table->integer('dob_month')->nullable();
+                $table->integer('dob_date')->nullable();
+                $table->string('gender')->nullable();
+            });
         });
     }
 
