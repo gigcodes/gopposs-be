@@ -15,7 +15,6 @@ Route::prefix('api/v1')->group(function () {
     Route::post('register', [AuthController::class, 'register'])->name('register');
     Route::post('forgot-password', [AuthController::class, 'sendResetPasswordLink'])->middleware('throttle:5,1')->name('password.email');
     Route::post('reset-password', [AuthController::class, 'resetPassword'])->name('password.store');
-    Route::post('verification-notification', [AuthController::class, 'verificationNotification'])->middleware('throttle:verification-notification')->name('verification.send');
 
     Route::middleware(['auth:sanctum'])->group(function () {
         /**
